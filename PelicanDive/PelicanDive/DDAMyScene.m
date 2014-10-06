@@ -12,8 +12,12 @@
 @property (nonatomic) SKSpriteNode *pelican;
 @property (nonatomic) SKColor *skyColor;
 @property (nonatomic) SKTexture *airplaneTexture;
+@property (nonatomic) SKTexture *cloudTexture;
+@property (nonatomic) SKTexture *helicopterTexture;
 @property (nonatomic) SKTexture *scubaDiverTexture;
+@property (nonatomic) SKTexture *oilspillTexture;
 @property (nonatomic) SKAction *moveAndRemoveEnemies;
+@property (nonatomic) SKAction *moveAndRemoveClouds;
 @end
 
 @implementation DDAMyScene
@@ -75,7 +79,10 @@ static NSInteger const kEnemyGap = 100;
         
         // Add Air & Sea Enemies
         self.airplaneTexture = [SKTexture textureWithImageNamed:@"airplane"];
+        self.helicopterTexture = [SKTexture textureWithImageNamed:@"helicopter"];
         self.scubaDiverTexture = [SKTexture textureWithImageNamed:@"ScubaDiver"];
+        self.oilspillTexture = [SKTexture textureWithImageNamed:@"oilspill"];
+        self.cloudTexture = [SKTexture textureWithImageNamed:@"cloud0"];
         
         CGFloat distanceToMove = self.frame.size.width + 2 * self.airplaneTexture.size.width;
         SKAction *moveEnemies = [SKAction moveByX:-distanceToMove y:0 duration:0.01 * distanceToMove];
@@ -87,6 +94,18 @@ static NSInteger const kEnemyGap = 100;
         SKAction *spawnThenDelay = [SKAction sequence:@[spawn, delay]];
         SKAction *spawnThenDelayForever = [SKAction repeatActionForever:spawnThenDelay];
         [self runAction:spawnThenDelayForever];
+        
+        // Add Moving Clouds
+        CGFloat distanceToMoveCloud = self.frame.size.width + 2 * self.cloudTexture.size.width;
+        SKAction *moveClouds = [SKAction moveByX:-distanceToMoveCloud y:0 duration:0.03 * distanceToMoveCloud];
+        SKAction *removeClouds = [SKAction removeFromParent];
+        self.moveAndRemoveClouds = [SKAction sequence:@[moveClouds, removeClouds]];
+        
+        SKAction *spawnClouds = [SKAction performSelector:@selector(spawnClouds) onTarget:self];
+        SKAction *delayCloud = [SKAction waitForDuration:1.5];
+        SKAction *spawnCloudAndDelay = [SKAction sequence:@[spawnClouds, delayCloud]];
+        SKAction *spawnCloudThenDelayForever = [SKAction repeatActionForever:spawnCloudAndDelay];
+        [self runAction:spawnCloudThenDelayForever];
     }
     return self;
 }
@@ -113,26 +132,56 @@ CGFloat boxValue(CGFloat min, CGFloat max, CGFloat value) {
 }
 
 
+- (void)spawnClouds {
+    NSInteger cloud = arc4random_uniform(3);
+    NSString *textureName = [NSString stringWithFormat:@"cloud%ld", (long)cloud];
+    SKSpriteNode *cloudSprite = [SKSpriteNode spriteNodeWithTexture:[SKTexture textureWithImageNamed:textureName]];
+//    SKSpriteNode *cloudSprite = [SKSpriteNode spriteNodeWithTexture:self.cloudTexture];
+    cloudSprite.zPosition = -15;
+    [cloudSprite setScale:0.5];
+    
+    CGFloat y = arc4random() % (NSInteger)(self.frame.size.height / 2);
+    cloudSprite.position = CGPointMake(self.frame.size.width + self.cloudTexture.size.width,y+200);
+    cloudSprite.physicsBody.dynamic = NO;
+    
+    [cloudSprite runAction:self.moveAndRemoveClouds];
+    [self addChild:cloudSprite];
+}
+
 -(void)spawnEnemies {
-    SKNode* enemyPair = [SKNode node];
-    enemyPair.position = CGPointMake(self.frame.size.width + self.scubaDiverTexture.size.width, 0);
+    SKNode *enemyPair = [SKNode node];
+    
+    NSInteger seaEnemy = arc4random_uniform(2);
+    SKSpriteNode *seaEnemySprite = [SKSpriteNode node];
+    if (seaEnemy == 0) {
+        enemyPair.position = CGPointMake(self.frame.size.width + self.scubaDiverTexture.size.width, 0);
+        seaEnemySprite = [SKSpriteNode spriteNodeWithTexture:self.scubaDiverTexture];
+    } else {
+        enemyPair.position = CGPointMake(self.frame.size.width + self.oilspillTexture.size.width, 0);
+        seaEnemySprite = [SKSpriteNode spriteNodeWithTexture:self.oilspillTexture];
+    }
     enemyPair.zPosition = -10;
     
     CGFloat y = arc4random() % (NSInteger)(self.frame.size.height / 3);
     
-    SKSpriteNode *scubaDiver = [SKSpriteNode spriteNodeWithTexture:self.scubaDiverTexture];
-    [scubaDiver setScale:0.5];
-    scubaDiver.position = CGPointMake(0, y);
-    scubaDiver.physicsBody = [SKPhysicsBody bodyWithRectangleOfSize:scubaDiver.size];
-    scubaDiver.physicsBody.dynamic = NO;
-    [enemyPair addChild:scubaDiver];
+    [seaEnemySprite setScale:0.5];
+    seaEnemySprite.position = CGPointMake(0, y);
+    seaEnemySprite.physicsBody = [SKPhysicsBody bodyWithRectangleOfSize:seaEnemySprite.size];
+    seaEnemySprite.physicsBody.dynamic = NO;
+    [enemyPair addChild:seaEnemySprite];
     
-    SKSpriteNode *airplane = [SKSpriteNode spriteNodeWithTexture:self.airplaneTexture];
-    [airplane setScale:0.5];
-    airplane.position = CGPointMake(0, y + airplane.size.height + kEnemyGap);
-    airplane.physicsBody = [SKPhysicsBody bodyWithRectangleOfSize:airplane.size];
-    airplane.physicsBody.dynamic = NO;
-    [enemyPair addChild:airplane];
+    NSInteger enemy = arc4random_uniform(2);
+    SKSpriteNode *airShip = [SKSpriteNode node];
+    if (enemy == 0) {
+        airShip = [SKSpriteNode spriteNodeWithTexture:self.airplaneTexture];
+    } else {
+        airShip = [SKSpriteNode spriteNodeWithTexture:self.helicopterTexture];
+    }
+    [airShip setScale:0.5];
+    airShip.position = CGPointMake(0, y + airShip.size.height + kEnemyGap);
+    airShip.physicsBody = [SKPhysicsBody bodyWithRectangleOfSize:airShip.size];
+    airShip.physicsBody.dynamic = NO;
+    [enemyPair addChild:airShip];
     
     [enemyPair runAction:self.moveAndRemoveEnemies];
     

@@ -2,8 +2,8 @@
   "images" : [
     {
       "idiom" : "universal",
-      "scale" : "1x",
-      "filename" : "airplane.png"
+      "scale" : "2x",
+      "filename" : "airplane@2x.png"
     }
   ],
   "info" : {

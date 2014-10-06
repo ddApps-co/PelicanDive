@@ -3,12 +3,12 @@
     {
       "idiom" : "universal",
       "scale" : "1x",
-      "filename" : "cloud1.png"
+      "filename" : "cloud2.png"
     },
     {
       "idiom" : "universal",
       "scale" : "2x",
-      "filename" : "cloud1@2x.png"
+      "filename" : "cloud2@2x.png"
     }
   ],
   "info" : {
