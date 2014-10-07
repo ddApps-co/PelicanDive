@@ -8,7 +8,7 @@
 
 #import "DDAMyScene.h"
 
-@interface DDAMyScene()
+@interface DDAMyScene() <SKPhysicsContactDelegate>
 @property (nonatomic) SKSpriteNode *pelican;
 @property (nonatomic) SKColor *skyColor;
 @property (nonatomic) SKTexture *airplaneTexture;
@@ -22,8 +22,15 @@
 
 @implementation DDAMyScene
 
+
+// Collision Categories
+static const uint32_t pelicanCategory = 0x1 << 0;
+static const uint32_t enemyCategory = 0x1 << 1;
+
+
 // The Gap between enemies
 static NSInteger const kEnemyGap = 100;
+
 
 - (instancetype)initWithSize:(CGSize)size {
     if (self = [super initWithSize:size]) {
@@ -31,8 +38,9 @@ static NSInteger const kEnemyGap = 100;
         self.skyColor = [UIColor colorWithRed:0.7961 green:0.9333 blue:0.9804 alpha:1];
         self.backgroundColor = self.skyColor;
         
-        // The World's Gravity
+        // The World's Gravity & Contact Delegate
         self.physicsWorld.gravity = CGVectorMake(0.0, -5.0);
+        self.physicsWorld.contactDelegate = self;
         
         // The Pelican
         SKTexture *pelicanTexture1 = [SKTexture textureWithImageNamed:@"pelican1"];
@@ -48,6 +56,11 @@ static NSInteger const kEnemyGap = 100;
         self.pelican.physicsBody = [SKPhysicsBody bodyWithCircleOfRadius:self.pelican.size.height / 2];
         self.pelican.physicsBody.dynamic = YES;
         self.pelican.physicsBody.allowsRotation = NO;
+        
+        // Contact Definition for Pelican
+        self.pelican.physicsBody.categoryBitMask = pelicanCategory;
+        self.pelican.physicsBody.collisionBitMask = enemyCategory;
+        self.pelican.physicsBody.contactTestBitMask = enemyCategory;
         
         [self addChild:self.pelican];
         
@@ -128,7 +141,7 @@ CGFloat boxValue(CGFloat min, CGFloat max, CGFloat value) {
 - (void)update:(NSTimeInterval)currentTime {
     self.pelican.zRotation = boxValue( -1, 0.5,
                                       self.pelican.physicsBody.velocity.dy *
-                                      ( self.pelican.physicsBody.velocity.dy < 0 ? 0.003 : 0.001 ) );
+                                      (self.pelican.physicsBody.velocity.dy < 0 ? 0.003 : 0.001));
 }
 
 
@@ -168,6 +181,11 @@ CGFloat boxValue(CGFloat min, CGFloat max, CGFloat value) {
     seaEnemySprite.position = CGPointMake(0, y);
     seaEnemySprite.physicsBody = [SKPhysicsBody bodyWithRectangleOfSize:seaEnemySprite.size];
     seaEnemySprite.physicsBody.dynamic = NO;
+    
+    // Collision Definition for Sea Enemies
+    seaEnemySprite.physicsBody.collisionBitMask = enemyCategory;
+    seaEnemySprite.physicsBody.contactTestBitMask = pelicanCategory;
+    
     [enemyPair addChild:seaEnemySprite];
     
     NSInteger enemy = arc4random_uniform(2);
@@ -181,11 +199,26 @@ CGFloat boxValue(CGFloat min, CGFloat max, CGFloat value) {
     airShip.position = CGPointMake(0, y + airShip.size.height + kEnemyGap);
     airShip.physicsBody = [SKPhysicsBody bodyWithRectangleOfSize:airShip.size];
     airShip.physicsBody.dynamic = NO;
+    
+    // Collision Definition for Air Enemies
+    airShip.physicsBody.collisionBitMask = enemyCategory;
+    airShip.physicsBody.contactTestBitMask = pelicanCategory;
+    
     [enemyPair addChild:airShip];
     
     [enemyPair runAction:self.moveAndRemoveEnemies];
     
     [self addChild:enemyPair];
+}
+
+
+- (void)didBeginContact:(SKPhysicsContact *)contact {
+    [self removeActionForKey:@"flash"];
+    [self runAction:[SKAction sequence:@[[SKAction repeatAction:[SKAction sequence:@[[SKAction runBlock:^{
+        self.backgroundColor = [SKColor redColor];
+    }], [SKAction waitForDuration:0.05], [SKAction runBlock:^{
+        self.backgroundColor = self.skyColor;
+    }], [SKAction waitForDuration:0.05]]] count:4]]] withKey:@"flash"];
 }
 
 @end
