@@ -18,6 +18,7 @@
 @property (nonatomic) SKTexture *oilspillTexture;
 @property (nonatomic) SKAction *moveAndRemoveEnemies;
 @property (nonatomic) SKAction *moveAndRemoveClouds;
+@property (nonatomic) SKNode *moving;
 @end
 
 @implementation DDAMyScene
@@ -37,6 +38,10 @@ static NSInteger const kEnemyGap = 100;
         // The Sky
         self.skyColor = [UIColor colorWithRed:0.7961 green:0.9333 blue:0.9804 alpha:1];
         self.backgroundColor = self.skyColor;
+        
+        // All Moving entities will be added to this parent node
+        self.moving = [SKNode node];
+        [self addChild:self.moving];
         
         // The World's Gravity & Contact Delegate
         self.physicsWorld.gravity = CGVectorMake(0.0, -5.0);
@@ -77,7 +82,8 @@ static NSInteger const kEnemyGap = 100;
             sea.zPosition = -10;
             sea.position = CGPointMake(i * sea.size.width, sea.size.height / 4);
             [sea runAction:moveSeaSpritesForever];
-            [self addChild:sea];
+            // [self addChild:sea];
+            [self.moving addChild:sea];
         }
         
         // Create a bottom edge physics container
@@ -124,8 +130,10 @@ static NSInteger const kEnemyGap = 100;
 }
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
-    self.pelican.physicsBody.velocity = CGVectorMake(0, 0);
-    [self.pelican.physicsBody applyImpulse:CGVectorMake(0, 4)];
+    if (self.moving > 0) {
+        self.pelican.physicsBody.velocity = CGVectorMake(0, 0);
+        [self.pelican.physicsBody applyImpulse:CGVectorMake(0, 4)];
+    }
 }
 
 CGFloat boxValue(CGFloat min, CGFloat max, CGFloat value) {
@@ -158,7 +166,8 @@ CGFloat boxValue(CGFloat min, CGFloat max, CGFloat value) {
     cloudSprite.physicsBody.dynamic = NO;
     
     [cloudSprite runAction:self.moveAndRemoveClouds];
-    [self addChild:cloudSprite];
+    //[self addChild:cloudSprite];
+    [self.moving addChild:cloudSprite];
 }
 
 -(void)spawnEnemies {
@@ -208,17 +217,23 @@ CGFloat boxValue(CGFloat min, CGFloat max, CGFloat value) {
     
     [enemyPair runAction:self.moveAndRemoveEnemies];
     
-    [self addChild:enemyPair];
+    //[self addChild:enemyPair];
+    [self.moving addChild:enemyPair];
 }
 
 
 - (void)didBeginContact:(SKPhysicsContact *)contact {
-    [self removeActionForKey:@"flash"];
-    [self runAction:[SKAction sequence:@[[SKAction repeatAction:[SKAction sequence:@[[SKAction runBlock:^{
-        self.backgroundColor = [SKColor redColor];
-    }], [SKAction waitForDuration:0.05], [SKAction runBlock:^{
-        self.backgroundColor = self.skyColor;
-    }], [SKAction waitForDuration:0.05]]] count:4]]] withKey:@"flash"];
+    if (self.moving.speed > 0) {
+        self.moving.speed = 0;
+        
+        [self removeActionForKey:@"flash"];
+        [self runAction:[SKAction sequence:@[[SKAction repeatAction:[SKAction sequence:@[[SKAction runBlock:^{
+            self.backgroundColor = [SKColor redColor];
+        }], [SKAction waitForDuration:0.05], [SKAction runBlock:^{
+            self.backgroundColor = self.skyColor;
+        }], [SKAction waitForDuration:0.05]]] count:4]]] withKey:@"flash"];
+   
+    }
 }
 
 @end
